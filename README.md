@@ -1,2 +1,5 @@
-# phpSocket
-# phpSocket
+## phpSocket TCP/IP application code
+
+# client
+
+# server
