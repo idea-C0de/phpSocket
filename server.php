@@ -2,7 +2,10 @@
 error_reporting(E_ALL);
 set_time_limit(0);
 ob_implicit_flush();
+
 print "Starting Socket Server...\n"; 
+
+/* address & port */
 $address = '127.0.0.1';
 $port = 10000;
 
@@ -14,36 +17,30 @@ if (socket_bind($sock, $address, $port) < 0 ) {
     echo "socket_bind() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
 }
 
-if (socket_listen($sock,99) < 0) {
+if (socket_listen($sock,10) < 0) {
     echo "socket_listen() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
 }
 
-$count = 0;
+//$count = 0;
 $today = date("H:i:s");       
 $NotDataType = "Not";
-do {
-    if (($msgsock = socket_accept($sock)) < 0) {
+do
+{
+    if (($msgsock = socket_accept($sock)) < 0) 
+    {
         echo "socket_accept() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-        //break;
-    }   //else {
+    }   
 
-    do {
+    do 
+    {  
+        $buf = socket_read($msgsock,2048,PHP_NORMAL_READ);                           
+        socket_write($msgsock,bin2hex($buf),strlen(bin2hex($buf))); // response
+        $bufHex = bin2hex($buf); 
+        echo $today . "::" . $bufHex . "\n";
 
-        $buf = socket_read($msgsock, 2048); //PHP_NORMAL_READ
-        $talkback = "PHP: You said \n";
-        socket_write($msgsock, $talkback, strlen($talkback));
-        echo $today . "::" . bin2hex($buf) . "\n";
-            
-    // }
-
-        // if(++$count >= 3){
-        //     break;
-        // };
-
-    } while (true);
+    }while (true);
     socket_close($msgsock);
 
-} while (true);
-
+}while (true);
 socket_close($sock);
 ?>
