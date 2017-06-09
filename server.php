@@ -1,11 +1,12 @@
 <?php
+header('Content-type: text/html; charset=utf-8'); //指定utf8編碼 
 error_reporting(E_ALL);
 set_time_limit(0);
 ob_implicit_flush();
 
-print "Starting Socket Server...\n"; 
+$title = "PHP-Socket伺服器 已啟動...\n";
+print $title;
 
-/* address & port */
 $address = '127.0.0.1';
 $port = 10000;
 
@@ -21,26 +22,33 @@ if (socket_listen($sock,10) < 0) {
     echo "socket_listen() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
 }
 
-//$count = 0;
+$count = 0;
 $today = date("H:i:s");       
 $NotDataType = "Not";
-do
-{
-    if (($msgsock = socket_accept($sock)) < 0) 
-    {
+do {
+    if (($msgsock = socket_accept($sock)) < 0) {
         echo "socket_accept() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-    }   
+        break;
+    }   //else {
 
-    do 
-    {  
-        $buf = socket_read($msgsock,2048,PHP_NORMAL_READ);                           
-        socket_write($msgsock,bin2hex($buf),strlen(bin2hex($buf))); // response
-        $bufHex = bin2hex($buf); 
-        echo $today . "::" . $bufHex . "\n";
+    do {
 
-    }while (true);
+             $buf = socket_read($msgsock, 2048, PHP_NORMAL_READ);                                   
+
+             /* 如果 client值 不存在，則停止以下程序的執行 */
+             if($buf){
+                socket_write($msgsock, $buf . "\n", strlen($buf . "\n")); // response(回傳)
+                $bufHex = bin2hex($buf);
+                echo $today . "::" . $bufHex . "\n";
+             } else {
+                break;
+             }
+
+        }
+
+    } while (true);
     socket_close($msgsock);
 
-}while (true);
+} while (true);
 socket_close($sock);
 ?>
