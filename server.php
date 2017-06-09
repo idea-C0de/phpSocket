@@ -1,54 +1,58 @@
-<?php
-header('Content-type: text/html; charset=utf-8'); //指定utf8編碼 
+<?php 
+// set some variables
+$host = "127.0.0.1";
+$port = 10000;
+$number = 10;
+
+// don't timeout!
+header('Content-type: text/html; charset=utf-8');
 error_reporting(E_ALL);
 set_time_limit(0);
 ob_implicit_flush();
 
-$title = "PHP-Socket伺服器 已啟動...\n";
-print $title;
+echo $title = "PHP-Socket server strat...\n";
+echo "Host:" . $host . "\n";
+echo "Port:" . $port . "\n";
+echo "Number:" . "Max" . $number . "value/s" ."\n";
 
-$address = '127.0.0.1';
-$port = 10000;
+/* create socket */
+$socket = socket_create(AF_INET, SOCK_STREAM, 0) or die("Could not create socket\n");
 
-if (($sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)) < 0) {
-    echo "socket_create() failed: reason: " . socket_strerror(socket_last_error()) . "\n";
-}
+/*  bind socket to port */
+$result = socket_bind($socket, $host, $port) or die("Could not bind to socket\n");
 
-if (socket_bind($sock, $address, $port) < 0 ) {
-    echo "socket_bind() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-}
+/* start listening for connections */
+$result = socket_listen($socket, 3) or die("Could not set up socket listener\n");
 
-if (socket_listen($sock,10) < 0) {
-    echo "socket_listen() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-}
-
-$count = 0;
-$today = date("H:i:s");       
-$NotDataType = "Not";
-do {
-    if (($msgsock = socket_accept($sock)) < 0) {
-        echo "socket_accept() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-        break;
-    }   //else {
-
-    do {
-
-             $buf = socket_read($msgsock, 2048, PHP_NORMAL_READ);                                   
-
-             /* 如果 client值 不存在，則停止以下程序的執行 */
-             if($buf){
-                socket_write($msgsock, $buf . "\n", strlen($buf . "\n")); // response(回傳)
-                $bufHex = bin2hex($buf);
-                echo $today . "::" . $bufHex . "\n";
-             } else {
+/* accept incoming connections, spawn another socket to handle communication */
+    $count = 0;
+    do 
+    {
+        $spawn = socket_accept($socket) or die("Could not accept incoming connection\n");
+        /* read client input */
+        $input = socket_read($spawn, 1024) or die("Could not read input\n");
+        /* clean up input string */
+        $input = trim($input);
+        $input_hex = bin2hex($input);
+        echo "Client Message : ".$input_hex . "\r\n";
+        /* reverse client input and send back */
+        //$output = strrev($input_hex) . "\n";
+        socket_write($spawn, $input, strlen ($input)) or die("Could not write output\n");
+        
+                    /* 資料庫處理與轉換 */
+        
+        
+                    /* End 資料庫處理與轉換 */
+        
+                /* close sockets */
+                socket_close($spawn);
+            
+            if(++$count >= $number){
                 break;
-             }
+            };
 
-        }
-
-    } while (true);
-    socket_close($msgsock);
-
-} while (true);
-socket_close($sock);
+    }while(true);
+    
+  /* close sockets */   
+  socket_close($socket);
 ?>
