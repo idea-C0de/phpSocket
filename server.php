@@ -1,58 +1,56 @@
-<?php 
+<?php
+/* 引入資料庫 */
+include_once('php/config.php');
+
 // set some variables
 $host = "127.0.0.1";
-$port = 10000;
-$number = 10;
+$port = 50000;
 
-// don't timeout!
-header('Content-type: text/html; charset=utf-8');
+header('Content-type: text/html; charset=utf-8'); //指定utf8編碼 
 error_reporting(E_ALL);
 set_time_limit(0);
 ob_implicit_flush();
 
-echo $title = "PHP-Socket server strat...\n";
+echo $title = "PHP-Socket伺服器 已啟動...\n";
 echo "Host:" . $host . "\n";
 echo "Port:" . $port . "\n";
-echo "Number:" . "Max" . $number . "value/s" ."\n";
 
-/* create socket */
-$socket = socket_create(AF_INET, SOCK_STREAM, 0) or die("Could not create socket\n");
+if (($sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)) < 0) {
+    echo "socket_create() failed: reason: " . socket_strerror(socket_last_error()) . "\n";
+}
 
-/*  bind socket to port */
-$result = socket_bind($socket, $host, $port) or die("Could not bind to socket\n");
+if (socket_bind($sock, $host, $port) < 0 ) {
+    echo "socket_bind() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
+}
 
-/* start listening for connections */
-$result = socket_listen($socket, 3) or die("Could not set up socket listener\n");
+if (socket_listen($sock,10) < 0) {
+    echo "socket_listen() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
+}
 
-/* accept incoming connections, spawn another socket to handle communication */
-    $count = 0;
-    do 
-    {
-        $spawn = socket_accept($socket) or die("Could not accept incoming connection\n");
-        /* read client input */
-        $input = socket_read($spawn, 1024) or die("Could not read input\n");
-        /* clean up input string */
-        $input = trim($input);
-        $input_hex = bin2hex($input);
-        echo "Client Message : ".$input_hex . "\r\n";
-        /* reverse client input and send back */
-        //$output = strrev($input_hex) . "\n";
-        socket_write($spawn, $input, strlen ($input)) or die("Could not write output\n");
-        
-                    /* 資料庫處理與轉換 */
-        
-        
-                    /* End 資料庫處理與轉換 */
-        
-                /* close sockets */
-                socket_close($spawn);
-            
-            if(++$count >= $number){
-                break;
-            };
+$count = 0;
+$today = date("H:i:s");   
+$NotDataType = "Not";
+do {
+    if (($msgsock = socket_accept($sock)) < 0) {
+        echo "socket_accept() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
+        //break;
+    }   //else {
 
-    }while(true);
-    
-  /* close sockets */   
-  socket_close($socket);
+    do {
+
+         $buf = socket_read($msgsock, 2048);                                 // PHP_NORMAL_READ                                   
+
+         if($buf){
+            socket_write($msgsock, $buf . "\n", strlen($buf . "\n"));        // response Success!
+            $bufHex = bin2hex($buf);
+            echo $today . "::" . $bufHex . "\n";
+         } else {             
+            break;
+         }
+
+    } while (true);
+    socket_close($msgsock);
+
+} while (true);
+socket_close($sock);
 ?>
