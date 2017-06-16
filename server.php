@@ -1,56 +1,107 @@
 <?php
-/* 引入資料庫 */
-include_once('php/config.php');
+// Set time limit to indefinite execution
+set_time_limit (0);
 
-// set some variables
-$host = "127.0.0.1";
-$port = 50000;
+// Set the ip and port we will listen on
+$address = '127.0.0.1';
+$port = 9527;
+$max_clients = 10;
 
-header('Content-type: text/html; charset=utf-8'); //指定utf8編碼 
-error_reporting(E_ALL);
-set_time_limit(0);
-ob_implicit_flush();
+// Array that will hold client information
+$client = array();
 
-echo $title = "PHP-Socket伺服器 已啟動...\n";
-echo "Host:" . $host . "\n";
-echo "Port:" . $port . "\n";
+// Create a TCP Stream socket
+$sock = socket_create(AF_INET, SOCK_STREAM, 0);
 
-if (($sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)) < 0) {
-    echo "socket_create() failed: reason: " . socket_strerror(socket_last_error()) . "\n";
-}
+// Bind the socket to an address/port
+socket_bind($sock, $address, $port) or die('Could not bind to address');
 
-if (socket_bind($sock, $host, $port) < 0 ) {
-    echo "socket_bind() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-}
+// Start listening for connections
+socket_listen($sock);
 
-if (socket_listen($sock,10) < 0) {
-    echo "socket_listen() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-}
+// Loop continuously
+while(true){
+    // Setup clients listen socket for reading
+    $read[0] = $sock;
+    for ($i = 0; $i < $max_clients; $i++)
+    {
+        if (isset($client[$i]))
+        if ($client[$i]['sock']  != null)
+            $read[$i + 1] = $client[$i]['sock'] ;
+    }
 
-$count = 0;
-$today = date("H:i:s");   
-$NotDataType = "Not";
-do {
-    if (($msgsock = socket_accept($sock)) < 0) {
-        echo "socket_accept() failed: reason: " . socket_strerror(socket_last_error($sock)) . "\n";
-        //break;
-    }   //else {
+    // Set up a blocking call to socket_select()
+    $ready = socket_select($read, $write = NULL, $except = NULL, $tv_sec = NULL);
+    /* if a new connection is being made add it to the client array */
+    if (in_array($sock, $read)) 
+    {
+        for ($i = 0; $i < $max_clients; $i++)
+        {
+            if (!isset($client[$i])) {
+                $client[$i] = array();
+                $client[$i]['sock'] = socket_accept($sock);
+                echo("Accepting incomming connection...\n");
+                break;
+            }
+            elseif ($i == $max_clients - 1)
+                print ("too many clients");
+        }
+        if (--$ready <= 0)
+            continue;
+    } // end if in_array
 
-    do {
+    // If a client is trying to write - handle it now
+    for ($i = 0; $i < $max_clients; $i++) // for each client
+    {
+        if (isset($client[$i]))
+        if (in_array($client[$i]['sock'] , $read))
+        {
+            $input = socket_read($client[$i]['sock'] , 1024);  //strlen();
+            /* 如果input為空，或直接主動斷開server也會跟你斷 */
+            if ($input == null){
+                echo("Client value errer\n");
+                unset($client[$i]);
+                exit(); 
+            }
+            $n = trim($input);
+            if ($n == 'exit') {
+                echo("Client requested disconnect\n");
+                // requested disconnect
+                //socket_close($client[$i]['sock']);
+            }
+            if(substr($n,0,3) == 'say') {
+                //broadcast
+                echo("Broadcast received\n");
+                for ($j = 0; $j < $max_clients; $j++) // for each client
+                {
+                    if (isset($client[$j]))
+                    if ($client[$j]['sock']) {
+                        socket_write($client[$j]['sock'], substr($n, 4, strlen($n)-4).chr(0));
+                    }
+                }
+            if($input) {
+                $today = date("H:i:s");   
+                $NotDataType = "Not";
+                //echo("Returning stripped input\n");
+                // strip white spaces and write back to user
+                $bin2hexOutput = bin2hex($input);
+                //$output = ereg_replace("[ \t\n\r]","",$bin2hexInput).chr(0);
+                socket_write($client[$i]['sock'],$bin2hexOutput . "\r\n\r\n");
+                echo $today . "::" . $bin2hexOutput . "\n";
 
-         $buf = socket_read($msgsock, 2048);                                 // PHP_NORMAL_READ                                   
-
-         if($buf){
-            socket_write($msgsock, $buf . "\n", strlen($buf . "\n"));        // response Success!
-            $bufHex = bin2hex($buf);
-            echo $today . "::" . $bufHex . "\n";
-         } else {             
-            break;
-         }
-
-    } while (true);
-    socket_close($msgsock);
-
-} while (true);
+            }
+        } else {
+            // Close the socket
+            if (isset($client[$i]))
+            //echo("Client disconnected\n");
+            if ($client[$i]['sock'] >= 0){ 
+                socket_close($client[$i]['sock']); 
+                unset($client[$i]); 
+            }
+        }
+    }
+} // end while
+// Close the master sockets
+echo("Shutting down\n");
 socket_close($sock);
 ?>
