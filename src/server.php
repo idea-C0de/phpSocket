@@ -16,7 +16,7 @@
 // Set time limit to indefinite execution
 set_time_limit (0);
 
-$AO_tech_title = "【AO智慧訊息：AO-Tech PHP-Socket伺服器 已啟動中，等待通訊接通...】\n";
+$AO_tech_title = "【PHP-Socket伺服器 已啟動中，等待通訊接通...】\n";
 print $AO_tech_title;
 
 // Set the ip and port we will listen on, IP addr: 127.0.0.1
